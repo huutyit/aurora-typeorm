@@ -1,10 +1,11 @@
 {
   "compilerOptions": {
+    "module": "commonjs",
     "preserveConstEnums": true,
     "strictNullChecks": true,
     "sourceMap": true,
     "allowJs": true,
-    "target": "es5",
+    "target": "es2017",
     "outDir": ".build",
     "moduleResolution": "node",
     "lib": ["es2015"],

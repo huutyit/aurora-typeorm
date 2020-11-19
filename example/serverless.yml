@@ -34,7 +34,7 @@ custom:
       hostname: localhost
     database:
       engine: postgresql
-      connectionString: postgresql://test:test@localhost:54320/my-app
+      connectionString: postgresql://test:test@192.168.99.100:54320/my-app
   DataAPIMigrations:
     destFolder: ./migrations
     typescript: true

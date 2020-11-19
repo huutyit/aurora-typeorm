@@ -3,15 +3,102 @@ import * as AuroraDataAPI from "aurora-data-api";
 import * as createError from "http-errors";
 import * as yup from "yup";
 import {
-  createConnection,
-  getConnection,
   getConnectionManager,
-  getConnectionOptions,
-  getRepository,
   Entity,
   Column,
   PrimaryColumn,
+  Connection,
+  ConnectionOptions,
+  DefaultNamingStrategy,
 } from "typeorm";
+import { RelationLoader } from "typeorm/query-builder/RelationLoader";
+import { RelationIdLoader } from "typeorm/query-builder/RelationIdLoader";
+
+@Entity("user")
+class User {
+  @PrimaryColumn()
+  username: string;
+  @Column()
+  email: string;
+  @Column()
+  password: string;
+}
+
+const CONNECTION_OPTIONS: ConnectionOptions = {
+  type: "aurora-data-api-pg",
+  database: "my-app",
+  secretArn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:example",
+  resourceArn: "arn:aws:rds:us-east-1:123456789012:cluster:example",
+  region: "local",
+  serviceConfigOptions: {
+    endpoint: process.env.IS_OFFLINE && "http://localhost:8080",
+  },
+  entities: [User],
+  synchronize: true,
+}
+
+/**
+* Establishes and returns a connection to the database server. If an existing
+* connection is found, the connection is reused.
+*
+* @see https://github.com/typeorm/typeorm/issues/2598#issue-345445322
+* @export
+* @returns {Promise<Connection>}
+*/
+export async function getDatabaseConnection(): Promise<Connection> {
+  try {
+    console.log("Establishing connection...");
+    const connectionManager = getConnectionManager();
+    let connection: Connection;
+
+    if (connectionManager.has("default")) {
+      console.log("Reusing existion connection...");
+      connection = injectConnectionOptions(
+        connectionManager.get(),
+        CONNECTION_OPTIONS,
+      );
+    } else {
+      connection = connectionManager.create(CONNECTION_OPTIONS);
+      await connection.connect();
+    }
+
+    console.log("Connection established");
+    return connection;
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+};
+
+/**
+* Injects missing / outdated connection options into an existing database
+* connection.
+*
+* @see https://github.com/typeorm/typeorm/issues/2598#issue-345445322
+* @param {Connection} connection
+* @param {ConnectionOptions} CONNECTION_OPTIONS
+* @returns {Connection}
+*/
+function injectConnectionOptions(
+  connection: Connection,
+  CONNECTION_OPTIONS: ConnectionOptions,
+): Connection {
+  // @ts-ignore
+  connection.options = CONNECTION_OPTIONS
+  // @ts-ignore
+  connection.manager = connection.createEntityManager();
+  // @ts-ignore
+  connection.namingStrategy = connection.options.namingStrategy ||
+    new DefaultNamingStrategy();
+  // @ts-ignore
+  connection.relationLoader = new RelationLoader(connection);
+  // @ts-ignore
+  connection.relationIdLoader = new RelationIdLoader(connection);
+  // @ts-ignore
+  connection.buildMetadatas();
+
+  return connection;
+}
 
 class UUIDValue implements AuroraDataAPI.CustomValue {
   private value: string;
@@ -59,37 +146,9 @@ const data = require("data-api-client")({
   },
 });
 
-@Entity("user")
-class User {
-  @PrimaryColumn()
-  username: string;
-  @Column()
-  email: string;
-  @Column()
-  password: string;
-}
-
-const connectionManager = getConnectionManager();
-
-if (!connectionManager.has("default")) {
-  const connection = connectionManager.create({
-    type: "aurora-data-api-pg",
-    database: "my-app",
-    secretArn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:example",
-    resourceArn: "arn:aws:rds:us-east-1:123456789012:cluster:example",
-    region: "local",
-    serviceConfigOptions: {
-      endpoint: process.env.IS_OFFLINE && "http://localhost:8080",
-    },
-    entities: [User],
-    synchronize: true,
-  });
-  connection.connect();
-}
-
 export const test: AWSLambda.APIGatewayProxyHandler = async () => {
   try {
-    const connection = connectionManager.get();
+    const connection = await getDatabaseConnection();
 
     let user = new User();
     user.email = "abcdefxx@gmail.com";
