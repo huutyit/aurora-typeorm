@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES6",
+    "sourceMap": true,
+    "declaration": true,
+    "baseUrl": "./packages",
+    "paths": {
+      "aurora-data-api": ["aurora-data-api/src"],
+      "data-api-local": ["data-api-local/src"],
+      "data-api-migrations": ["data-api-migrations/src"]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "lib"
+  ]
+}

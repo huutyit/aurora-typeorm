@@ -1,0 +1,10 @@
+{
+  "packages": [
+    "packages/aurora-data-api",
+    "packages/data-api-local",
+    "packages/data-api-local-serverless",
+    "packages/data-api-migrations",
+    "packages/data-api-migrations-serverless"
+  ],
+  "version": "1.0.0-alpha.3"
+}
